@@ -74,6 +74,12 @@ def tweet_creator(subreddit_info):
 	post_dict = {}
 	print ('[BOT] Getting posts from Reddit')
 	for submission in subreddit_info.hot(limit=20):
+		# If the OP has deleted his account, save it as "a deleted user"
+		if submission.author is None:
+			submission.author = "a deleted user"
+			submission.author.name = "a deleted user"
+		else:
+			submission.author.name = "/u/" + submission.author.name
 		post_dict[strip_title(submission.title)] = [submission.id,submission.url,submission.shortlink,submission.author.name]
 	return post_dict
 
@@ -134,7 +140,7 @@ def alt_tweeter(post_link, op):
 		return
 
 	# Compose the tweet
-	tweetText = '@' + TWITTER_ACCOUNT_NAME + ' Originally posted by /u/' + op + '. ' + post_link
+	tweetText = '@' + TWITTER_ACCOUNT_NAME + ' Originally posted by ' + op + '. ' + post_link
 	print('[BOT] Posting this on alt Twitter account:', tweetText)
 	api.update_status(tweetText, newestTweet)
 
