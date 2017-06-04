@@ -1,6 +1,6 @@
 # Meme Bot
 
-This is a Python bot that looks up images from a specified subreddit and automatically posts them on Twitter. This was created for the [@ItMeIRL](https://twitter.com/ItMeIRL) and [@ItsMeowIRL](https://twitter.com/ItsMeowIRLL) Twitter accounts, based on [reddit-twitter-bot](https://github.com/rhiever/reddit-twitter-bot).
+This is a Python bot that looks up images from a specified subreddit and automatically posts them on Twitter. This was created for the [@ItMeIRL](https://twitter.com/ItMeIRL) and [@ItsMeowIRL](https://twitter.com/ItsMeowIRL) Twitter accounts, based on [reddit-twitter-bot](https://github.com/rhiever/reddit-twitter-bot).
 
 ## Disclaimer
 
