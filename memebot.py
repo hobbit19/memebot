@@ -105,16 +105,19 @@ def duplicate_check(id):
 	return value
 	
 def hash_check(hash):
-	value = False
-	# Only extract last three lines from cache file
-	post_list = []
-	with open(CACHE_CSV, 'rt', newline='') as f:
-		for line in f:
-			post_list.append(line)
-			if len(post_list) > REPOST_LIMIT:
-				post_list.pop(0)
-		if any(hash in s for s in post_list):
-			value = True
+	if hash:
+		value = False
+		# Only extract last three lines from cache file
+		post_list = []
+		with open(CACHE_CSV, 'rt', newline='') as f:
+			for line in f:
+				post_list.append(line)
+				if len(post_list) > REPOST_LIMIT:
+					post_list.pop(0)
+			if any(hash in s for s in post_list):
+				value = True
+	else:
+		value = True
 	return value
 
 def log_post(id, hash):
@@ -172,8 +175,13 @@ def tweeter(post_dict):
 			# Make sure the post contains media (if it doesn't, then file_path would be blank)
 			if (file_path):
 				# Scan the image against previously-posted images, but only if repost protection is enabled in config.ini
-				hash = photohash.average_hash(file_path)
-				print ('[ OK ] Image hash check:', hash_check(hash))
+				try:
+					hash = photohash.average_hash(file_path)
+					print ('[ OK ] Image hash check:', hash_check(hash))
+				except:
+					# Set hash to an empty string if the check failed
+					hash = ""
+					print ('[WARN] Could not check image hash, skipping.')
 				if (REPOST_PROTECTION is True and hash_check(hash) is True):
 					print ('[WARN] Skipping', post_id, 'because it seems to be a repost')
 				else:
