@@ -142,7 +142,7 @@ def main():
 	post_dict = tweet_creator(subreddit)
 	tweeter(post_dict)
 
-def alt_tweeter(post_link, op):
+def alt_tweeter(post_link, op, username):
 	# Make sure alt account works
 	auth = tweepy.OAuthHandler(ALT_CONSUMER_KEY, ALT_CONSUMER_SECRET)
 	auth.set_access_token(ALT_ACCESS_TOKEN, ALT_ACCESS_TOKEN_SECRET)
@@ -150,14 +150,14 @@ def alt_tweeter(post_link, op):
 
 	try:
 		# There's probably a better way to do this, but it works
-		latestTweets = api.user_timeline(screen_name = TWITTER_ACCOUNT_NAME, count = 1, include_rts = False)
+		latestTweets = api.user_timeline(screen_name = username, count = 1, include_rts = False)
 		newestTweet = latestTweets[0].id
 	except BaseException as e:
 		print ('[EROR] Error while posting tweet on alt account:', str(e))	
 		return
 
 	# Compose the tweet
-	tweetText = '@' + TWITTER_ACCOUNT_NAME + ' Originally posted by ' + op + '. ' + post_link
+	tweetText = '@' + username + ' Originally posted by ' + op + '. ' + post_link
 	print('[ OK ] Posting this on alt Twitter account:', tweetText)
 	api.update_status(tweetText, newestTweet)
 
@@ -188,9 +188,13 @@ def tweeter(post_dict):
 					print ('[ OK ] Posting this on main twitter account:', post, file_path)
 					log_post(post_id, hash)
 					try:
+						# Post the tweet
 						api.update_with_media(filename=file_path, status=post)
+						# Grab current username
+						username = api.me().screen_name
+						# Post alt tweet
 						if ALT_ACCESS_TOKEN:
-							alt_tweeter(post_link, post_op)
+							alt_tweeter(post_link, post_op, username)
 						else:
 							print('[WARN] No authentication info for alternate account in config.ini, skipping alt tweet.')
 						print('[ OK ] Sleeping for', DELAY_BETWEEN_TWEETS, 'seconds')
@@ -217,7 +221,6 @@ if __name__ == '__main__':
 		sys.exit()
 	# Create variables from config file
 	CACHE_CSV = config['BotSettings']['CacheFile']
-	TWITTER_ACCOUNT_NAME = config['BotSettings']['TwitterUsername']
 	IMAGE_DIR = config['BotSettings']['MediaFolder']
 	DELAY_BETWEEN_TWEETS = int(config['BotSettings']['DelayBetweenTweets'])
 	SUBREDDIT_TO_MONITOR = config['BotSettings']['SubredditToMonitor']
