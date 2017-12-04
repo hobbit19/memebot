@@ -18,10 +18,11 @@ import photohash
 CONFIG_FILE = 'config.ini'
 
 def strip_title(title):
-	if len(title) < 94:
+	# Shortlink is 22 characters long, plus one character for a space
+	if len(title) < 280:
 		return title
 	else:
-		return title[:93] + '...'
+		return title[:276] + '...'
 
 def save_file(img_url, file_path):
 	resp = requests.get(img_url, stream=True)
@@ -52,7 +53,7 @@ def get_media(img_url, post_id):
 			file_name += '.jpg'
 			img_url += '.jpg'
 		file_path = IMAGE_DIR + '/' + file_name
-		print('[BOT] Downloading file at URL ' + img_url + ' to ' + file_path + ', file type identified as ' + file_extension)
+		print('[ OK ] Downloading file at URL ' + img_url + ' to ' + file_path + ', file type identified as ' + file_extension)
 		if ('gifv' not in img_url): # Can't process GIFV links until Imgur API integration is working
 			img = save_file(img_url, file_path)
 			return img
@@ -66,7 +67,7 @@ def get_media(img_url, post_id):
 		gfycat_info = client.query_gfy(gfycat_name)
 		gfycat_url = gfycat_info['gfyItem']['mp4Url']
 		file_path = IMAGE_DIR + '/' + gfycat_name + '.mp4'
-		print('[BOT] Downloading Gfycat at URL ' + gfycat_url + ' to ' + file_path)
+		print('[ OK ] Downloading Gfycat at URL ' + gfycat_url + ' to ' + file_path)
 		gfycat_file = save_file(gfycat_url, file_path)
 		return gfycat_file
 	else:
