@@ -88,7 +88,7 @@ def tweet_creator(subreddit_info):
 	return post_dict
 
 def setup_connection_reddit(subreddit):
-	print ('[ OK ] Setting up connection with Reddit')
+	print ('[ OK ] Setting up connection with Reddit...')
 	r = praw.Reddit(
 		user_agent='bot irl',
 		client_id=REDDIT_AGENT,
@@ -120,17 +120,17 @@ def hash_check(hash):
 		value = True
 	return value
 
-def log_post(id, hash):
+def log_post(id, hash, tweetID):
 	with open(CACHE_CSV, 'a', newline='') as cache:
 			date = time.strftime("%d/%m/%Y") + ' ' + time.strftime("%H:%M:%S")
 			wr = csv.writer(cache, delimiter=',')
-			wr.writerow([id, date, hash])
+			wr.writerow([id, date, hash, tweetID])
 
 def main():
 	# Make sure logging file and media directory exists
 	if not os.path.exists(CACHE_CSV):
 		with open(CACHE_CSV, 'w', newline='') as cache:
-			default = ['Post','Date and time','Image hash']
+			default = ['Post','Date and time','Image hash', 'Tweet link']
 			wr = csv.writer(cache)
 			wr.writerow(default)
 		print ('[ OK ] ' + CACHE_CSV + ' file not found, created a new one')
@@ -142,24 +142,20 @@ def main():
 	post_dict = tweet_creator(subreddit)
 	tweeter(post_dict)
 
-def alt_tweeter(post_link, op, username):
-	# Make sure alt account works
-	auth = tweepy.OAuthHandler(ALT_CONSUMER_KEY, ALT_CONSUMER_SECRET)
-	auth.set_access_token(ALT_ACCESS_TOKEN, ALT_ACCESS_TOKEN_SECRET)
-	api = tweepy.API(auth)
-
+def alt_tweeter(post_link, op, username, newestTweet):
 	try:
-		# There's probably a better way to do this, but it works
-		latestTweets = api.user_timeline(screen_name = username, count = 1, include_rts = False)
-		newestTweet = latestTweets[0].id
+		# Log into alternate account
+		auth = tweepy.OAuthHandler(ALT_CONSUMER_KEY, ALT_CONSUMER_SECRET)
+		auth.set_access_token(ALT_ACCESS_TOKEN, ALT_ACCESS_TOKEN_SECRET)
+		api = tweepy.API(auth)
+
+		# Post the tweet
+		tweetText = '@' + username + ' Originally posted by ' + op + ' on Reddit: ' + post_link
+		print('[ OK ] Posting this on alt Twitter account:', tweetText)
+		api.update_status(tweetText, newestTweet)
 	except BaseException as e:
 		print ('[EROR] Error while posting tweet on alt account:', str(e))	
 		return
-
-	# Compose the tweet
-	tweetText = '@' + username + ' Originally posted by ' + op + '. ' + post_link
-	print('[ OK ] Posting this on alt Twitter account:', tweetText)
-	api.update_status(tweetText, newestTweet)
 
 def tweeter(post_dict):
 	auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
@@ -186,21 +182,25 @@ def tweeter(post_dict):
 					print ('[WARN] Skipping', post_id, 'because it seems to be a repost')
 				else:
 					print ('[ OK ] Posting this on main twitter account:', post, file_path)
-					log_post(post_id, hash)
 					try:
 						# Post the tweet
 						api.update_with_media(filename=file_path, status=post)
-						# Grab current username
+						# Log the tweet
 						username = api.me().screen_name
+						latestTweets = api.user_timeline(screen_name = username, count = 1, include_rts = False)
+						newestTweet = latestTweets[0].id_str
+						log_post(post_id, hash, 'https://twitter.com/' + username + '/status/' + newestTweet + '/')
 						# Post alt tweet
 						if ALT_ACCESS_TOKEN:
-							alt_tweeter(post_link, post_op, username)
+							alt_tweeter(post_link, post_op, username, newestTweet)
 						else:
 							print('[WARN] No authentication info for alternate account in config.ini, skipping alt tweet.')
 						print('[ OK ] Sleeping for', DELAY_BETWEEN_TWEETS, 'seconds')
 						time.sleep(DELAY_BETWEEN_TWEETS)
 					except BaseException as e:
 						print ('[EROR] Error while posting tweet:', str(e))
+						# Log the post anyways
+						log_post(post_id, hash, "Error while posting tweet:", str(e))
 			else:
 				print ('[WARN] Ignoring', post_id, 'because there was not a media file downloaded')
 			# Cleanup image file
