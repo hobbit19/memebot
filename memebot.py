@@ -200,7 +200,7 @@ def tweeter(post_dict):
 					except BaseException as e:
 						print ('[EROR] Error while posting tweet:', str(e))
 						# Log the post anyways
-						log_post(post_id, hash, "Error while posting tweet:", str(e))
+						log_post(post_id, hash, "Error while posting tweet:" + str(e))
 			else:
 				print ('[WARN] Ignoring', post_id, 'because there was not a media file downloaded')
 			# Cleanup image file
