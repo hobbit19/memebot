@@ -37,7 +37,7 @@ def save_file(img_url, file_path):
 		return ''
 
 def get_media(img_url, post_id):
-	if any(s in img_url for s in ('i.imgur.com', 'i.redd.it', 'i.reddituploads.com')):
+	if any(s in img_url for s in ('i.imgur.com', 'i.redd.it', 'i.reddituploads.com', 'media.giphy.com/media/')):
 		# This adds support for all imgur links (including galleries), but I need to make a new regex
 		#if ('i.imgur.com' not in img_url) and ('imgur.com' in img_url):
 			#print('[bot] Attempting to retrieve image URL for', img_url, 'from imgur...')
@@ -46,32 +46,35 @@ def get_media(img_url, post_id):
 			#print(m.group(0))
 			#img_url = imgur.get_image(img_url)
 		file_name = os.path.basename(urllib.parse.urlsplit(img_url).path)
-		file_extension = os.path.splitext(img_url)[-1].lower();
+		file_extension = os.path.splitext(img_url)[-1].lower()
 		# Fix for issue with i.reddituploads.com links not having a file extension in the URL
 		if not file_extension:
 			file_extension += '.jpg'
 			file_name += '.jpg'
 			img_url += '.jpg'
+		# Grab the GIF versions of .GIFV links
+		# When Tweepy adds support for video uploads, we can use grab the MP4 versions
+		if (file_extension == '.gifv'):
+			file_extension = file_extension.replace('.gifv', '.gif')
+			file_name = file_name.replace('.gifv', '.gif')
+			img_url = img_url.replace('.gifv', '.gif')
+		# Download the file
 		file_path = IMAGE_DIR + '/' + file_name
 		print('[ OK ] Downloading file at URL ' + img_url + ' to ' + file_path + ', file type identified as ' + file_extension)
-		if ('gifv' not in img_url): # Can't process GIFV links until Imgur API integration is working
-			img = save_file(img_url, file_path)
-			return img
-		else:
-			print('[WARN] GIFV files are not supported yet')
-			return ''
+		img = save_file(img_url, file_path)
+		return img
 	elif ('gfycat.com' in img_url): # Gfycat
-		# Twitter supports uploading videos, but Tweepy hasn't updated to support it yet.
 		gfycat_name = os.path.basename(urllib.parse.urlsplit(img_url).path)
 		client = GfycatClient()
 		gfycat_info = client.query_gfy(gfycat_name)
-		gfycat_url = gfycat_info['gfyItem']['mp4Url']
-		file_path = IMAGE_DIR + '/' + gfycat_name + '.mp4'
+		# Tweepy has a 3MB upload limit for GIFs, so we need to grab the 2MB version that Gfycat automatically generates for every upload
+		gfycat_url = gfycat_info['gfyItem']['max2mbGif']
+		file_path = IMAGE_DIR + '/' + gfycat_name + '.gif'
 		print('[ OK ] Downloading Gfycat at URL ' + gfycat_url + ' to ' + file_path)
 		gfycat_file = save_file(gfycat_url, file_path)
 		return gfycat_file
 	else:
-		print('[WARN] Post', post_id, 'doesn\'t point to an image/video:', img_url)
+		print('[WARN] Post', post_id, 'doesn\'t point to an image/GIF:', img_url)
 		return ''
 
 def tweet_creator(subreddit_info):
@@ -170,7 +173,7 @@ def tweeter(post_dict):
 			post_op = post_dict[post][3]
 			# Make sure the post contains media (if it doesn't, then file_path would be blank)
 			if (file_path):
-				# Scan the image against previously-posted images, but only if repost protection is enabled in config.ini
+				# Scan the image against previously-posted images
 				try:
 					hash = photohash.average_hash(file_path)
 					print ('[ OK ] Image hash check:', hash_check(hash))
@@ -178,9 +181,8 @@ def tweeter(post_dict):
 					# Set hash to an empty string if the check failed
 					hash = ""
 					print ('[WARN] Could not check image hash, skipping.')
-				if (REPOST_PROTECTION is True and hash_check(hash) is True):
-					print ('[WARN] Skipping', post_id, 'because it seems to be a repost')
-				else:
+				# Only make a tweet if the post has not already been posted (if repost protection is enabled)
+				if ((REPOST_PROTECTION is True) and (hash_check(hash) is False)):
 					print ('[ OK ] Posting this on main twitter account:', post, file_path)
 					try:
 						# Post the tweet
@@ -201,15 +203,18 @@ def tweeter(post_dict):
 						print ('[EROR] Error while posting tweet:', str(e))
 						# Log the post anyways
 						log_post(post_id, hash, "Error while posting tweet:" + str(e))
-			else:
-				print ('[WARN] Ignoring', post_id, 'because there was not a media file downloaded')
-			# Cleanup image file
-			if (file_path) is not None:
-				if (os.path.isfile(file_path)):
+				else:
+					print ('[WARN] Skipping', post_id, 'because it seems to be a repost')
+				# Cleanup media file
+				try:
 					os.remove(file_path)
 					print ('[ OK ] Deleted media file at ' + file_path)
+				except BaseException as e:
+					print ('[EROR] Error while deleting media file:', str(e))
+			else:
+				print ('[WARN] Ignoring', post_id, 'because there was not a media file downloaded')
 		else:
-				print ('[WARN] Ignoring', post_id, 'because it was already posted')
+			print ('[WARN] Ignoring', post_id, 'because it was already posted')
 
 if __name__ == '__main__':
 	# Make sure config file exists
