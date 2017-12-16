@@ -75,17 +75,21 @@ def get_media(img_url, post_id):
 		gfycat_file = save_file(gfycat_url, file_path)
 		return gfycat_file
 	elif ('giphy.com' in img_url): # Giphy
-		# Working demo of regex: https://regex101.com/r/o8m1kA/1
-		regex = r"https?://(media\.giphy\.com/media/|giphy.com/gifs/|i.giphy.com/)(.*-)?(\w+)(/|\n)"
+		# Working demo of regex: https://regex101.com/r/o8m1kA/2
+		regex = r"https?://((?:.*)giphy\.com/media/|giphy.com/gifs/|i.giphy.com/)(.*-)?(\w+)(/|\n)"
 		m = re.search(regex, img_url, flags=0)
-		# Get the Giphy ID
-		id = m.group(3)
-		# Download the 2MB version because Tweepy has a 3MB upload limit for GIFs
-		giphy_url = 'https://media.giphy.com/media/' + id + '/giphy-downsized.gif'
-		file_path = IMAGE_DIR + '/' + id + '-downsized.gif'
-		print('[ OK ] Downloading Giphy at URL ' + giphy_url + ' to ' + file_path)
-		giphy_file = save_file(giphy_url, file_path)
-		return giphy_file
+		if m:
+			# Get the Giphy ID
+			id = m.group(3)
+			# Download the 2MB version because Tweepy has a 3MB upload limit for GIFs
+			giphy_url = 'https://media.giphy.com/media/' + id + '/giphy-downsized.gif'
+			file_path = IMAGE_DIR + '/' + id + '-downsized.gif'
+			print('[ OK ] Downloading Giphy at URL ' + giphy_url + ' to ' + file_path)
+			giphy_file = save_file(giphy_url, file_path)
+			return giphy_file
+		else:
+			print('[EROR] Could not identify Giphy ID in this URL:', img_url)
+			return ''
 	else:
 		print('[WARN] Post', post_id, 'doesn\'t point to an image/GIF:', img_url)
 		return ''
@@ -215,9 +219,10 @@ def tweeter(post_dict):
 					except BaseException as e:
 						print ('[EROR] Error while posting tweet:', str(e))
 						# Log the post anyways
-						log_post(post_id, hash, "Error while posting tweet:" + str(e))
+						log_post(post_id, hash, 'Error while posting tweet: ' + str(e))
 				else:
-					print ('[WARN] Skipping', post_id, 'because it seems to be a repost')
+					print ('[WARN] Skipping', post_id, 'because it is a repost or Memebot previously failed to post it')
+					log_post(post_id, hash, 'Post was already tweeted or was identified as a repost')
 				# Cleanup media file
 				try:
 					os.remove(file_path)
