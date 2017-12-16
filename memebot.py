@@ -5,6 +5,7 @@ import tweepy
 import time
 import os
 import csv
+import re
 import configparser
 import urllib.parse
 import sys
@@ -37,7 +38,7 @@ def save_file(img_url, file_path):
 		return ''
 
 def get_media(img_url, post_id):
-	if any(s in img_url for s in ('i.imgur.com', 'i.redd.it', 'i.reddituploads.com', 'media.giphy.com/media/')):
+	if any(s in img_url for s in ('i.imgur.com', 'i.redd.it', 'i.reddituploads.com')):
 		# This adds support for all imgur links (including galleries), but I need to make a new regex
 		#if ('i.imgur.com' not in img_url) and ('imgur.com' in img_url):
 			#print('[bot] Attempting to retrieve image URL for', img_url, 'from imgur...')
@@ -67,12 +68,24 @@ def get_media(img_url, post_id):
 		gfycat_name = os.path.basename(urllib.parse.urlsplit(img_url).path)
 		client = GfycatClient()
 		gfycat_info = client.query_gfy(gfycat_name)
-		# Tweepy has a 3MB upload limit for GIFs, so we need to grab the 2MB version that Gfycat automatically generates for every upload
+		# Download the 2MB version because Tweepy has a 3MB upload limit for GIFs
 		gfycat_url = gfycat_info['gfyItem']['max2mbGif']
 		file_path = IMAGE_DIR + '/' + gfycat_name + '.gif'
 		print('[ OK ] Downloading Gfycat at URL ' + gfycat_url + ' to ' + file_path)
 		gfycat_file = save_file(gfycat_url, file_path)
 		return gfycat_file
+	elif ('giphy.com' in img_url): # Giphy
+		# Working demo of regex: https://regex101.com/r/eC9gL6/10
+		regex = r"https?://(media\.giphy\.com/media/|giphy.com/gifs/|i.giphy.com/)(.*-)?([^ /\n]+)"
+		m = re.search(regex, img_url, flags=0)
+		# Get the Giphy ID
+		id = m.group(3)
+		# Download the 2MB version because Tweepy has a 3MB upload limit for GIFs
+		giphy_url = 'https://media.giphy.com/media/' + id + '/giphy-downsized.gif'
+		file_path = IMAGE_DIR + '/' + id + '-downsized.gif'
+		print('[ OK ] Downloading Giphy at URL ' + giphy_url + ' to ' + file_path)
+		giphy_file = save_file(giphy_url, file_path)
+		return giphy_file
 	else:
 		print('[WARN] Post', post_id, 'doesn\'t point to an image/GIF:', img_url)
 		return ''
