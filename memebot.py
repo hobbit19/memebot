@@ -75,8 +75,8 @@ def get_media(img_url, post_id):
 		gfycat_file = save_file(gfycat_url, file_path)
 		return gfycat_file
 	elif ('giphy.com' in img_url): # Giphy
-		# Working demo of regex: https://regex101.com/r/eC9gL6/10
-		regex = r"https?://(media\.giphy\.com/media/|giphy.com/gifs/|i.giphy.com/)(.*-)?([^ /\n]+)"
+		# Working demo of regex: https://regex101.com/r/o8m1kA/1
+		regex = r"https?://(media\.giphy\.com/media/|giphy.com/gifs/|i.giphy.com/)(.*-)?(\w+)(/|\n)"
 		m = re.search(regex, img_url, flags=0)
 		# Get the Giphy ID
 		id = m.group(3)
