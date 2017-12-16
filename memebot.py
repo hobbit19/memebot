@@ -254,6 +254,17 @@ if __name__ == '__main__':
 	ALT_CONSUMER_SECRET = config['AltTwitterKeys']['ConsumerSecret']
 	REDDIT_AGENT = config['Reddit']['Agent']
 	REDDIT_CLIENT_SECRET = config['Reddit']['ClientSecret']
+	# Set the command line window title on Windows
+	if os.name == 'nt':
+		try:
+			auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
+			auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_secret)
+			api = tweepy.API(auth)
+			username = api.me().screen_name
+			title = '@' + username + ' - Memebot'
+		except:
+			title = 'Memebot'
+		os.system('title ' + title)
 	# Run the main script
 	while True:
 		main()
