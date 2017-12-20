@@ -34,7 +34,7 @@ def save_file(img_url, file_path):
 		# Return the path of the image, which is always the same since we just overwrite images
 		return file_path
 	else:
-		print('[EROR] File failed to download. Status code: ' + resp.status_code)
+		print('[EROR] File failed to download. Status code: ' + str(resp.status_code))
 		return ''
 
 def get_media(img_url, post_id):
