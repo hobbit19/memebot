@@ -34,7 +34,7 @@ Next, you'll need to give Meme Bot access to a Twitter account, and add the requ
 6. Click the 'Create my access token' button
 7. Fill out the [PrimaryTwitterKeys] section in the config file with the info
 
-You can also optionally use another Twitter account to reply to every tweet with the original source on Reddit ([example](https://twitter.com/IRL_Context/status/846069261474938880)). The bot will work fine if you skip this step.
+You can also optionally use another Twitter account to reply to every tweet with the original source on Reddit ([example](https://twitter.com/IRL_Context/status/846069261474938880)). The bot will still work if you skip this step, but it will not post the original source.
 
 1. [Sign in](https://dev.twitter.com/apps) with the Twitter account you want to use with the bot
 2. Click the 'Create New App' button
@@ -50,6 +50,12 @@ In addition, you will have to create an application on Reddit:
 2. Go to your [app preferences](https://www.reddit.com/prefs/apps) and create a new application at the bottom
 3. Select the application type as 'script'
 4. Add the token (seen below the name of the bot after it's generated) and the secret to the [Reddit] section of the config file
+
+Finally, you need to create an application on Imgur, so the bot can obtain direct image links from Imgur posts and albums:
+
+1. Sign into [Imgur](https://imgur.com/) with your account, or make one if you haven't already.
+2. Register an application [here](https://api.imgur.com/oauth2/addclient). Choose 'OAuth 2 authorization without a callback URL' as the app type.
+3. Add the Client ID and Client secret to the [Imgur] section of the config file
 
 ## Repost options
 
