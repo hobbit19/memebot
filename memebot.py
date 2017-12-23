@@ -11,6 +11,7 @@ import urllib.parse
 import sys
 from glob import glob
 from gfycat.client import GfycatClient
+from imgurpython import ImgurClient
 import distutils.core
 import itertools
 import photohash
@@ -38,14 +39,7 @@ def save_file(img_url, file_path):
 		return ''
 
 def get_media(img_url, post_id):
-	if any(s in img_url for s in ('i.imgur.com', 'i.redd.it', 'i.reddituploads.com')):
-		# This adds support for all imgur links (including galleries), but I need to make a new regex
-		#if ('i.imgur.com' not in img_url) and ('imgur.com' in img_url):
-			#print('[bot] Attempting to retrieve image URL for', img_url, 'from imgur...')
-			#regex = r"(https?:\/\/imgur\.com\/a\/(.*?)(?:\/.*|$))"
-			#m = re.search(regex, img_url, flags=0)
-			#print(m.group(0))
-			#img_url = imgur.get_image(img_url)
+	if any(s in img_url for s in ('i.redd.it', 'i.reddituploads.com')):
 		file_name = os.path.basename(urllib.parse.urlsplit(img_url).path)
 		file_extension = os.path.splitext(img_url)[-1].lower()
 		# Fix for issue with i.reddituploads.com links not having a file extension in the URL
@@ -64,6 +58,37 @@ def get_media(img_url, post_id):
 		print('[ OK ] Downloading file at URL ' + img_url + ' to ' + file_path + ', file type identified as ' + file_extension)
 		img = save_file(img_url, file_path)
 		return img
+	elif ('imgur.com' in img_url): # Imgur
+		try:
+			client = ImgurClient(IMGUR_CLIENT, IMGUR_CLIENT_SECRET)
+		except BaseException as e:
+			print ('[EROR] Error while authenticating with Imgur:', str(e))	
+			return
+		# Working demo of regex: https://regex101.com/r/G29uGl/2
+		regex = r"(?:.*)imgur\.com(?:\/gallery\/|\/a\/|\/)(.*?)(?:\/.*|\.|$)"
+		m = re.search(regex, img_url, flags=0)
+		if m:
+			# Get the Imgur image/gallery ID
+			id = m.group(1)
+			if any(s in img_url for s in ('/a/', '/gallery/')): # Gallery links
+				images = client.get_album_images(id)
+				# Only the first image in a gallery is used
+				imgur_url = images[0].link
+			else: # Single image
+				imgur_url = client.get_image(id).link
+			# If the URL is a GIFV link, change it to a GIF
+			file_extension = os.path.splitext(imgur_url)[-1].lower()
+			if (file_extension == '.gifv'):
+				file_extension = file_extension.replace('.gifv', '.gif')
+				img_url = imgur_url.replace('.gifv', '.gif')
+			# Download the image
+			file_path = IMAGE_DIR + '/' + id + file_extension
+			print('[ OK ] Downloading Imgur image at URL ' + imgur_url + ' to ' + file_path)
+			imgur_file = save_file(imgur_url, file_path)
+			return imgur_file
+		else:
+			print('[EROR] Could not identify Imgur image/gallery ID in this URL:', img_url)
+			return
 	elif ('gfycat.com' in img_url): # Gfycat
 		gfycat_name = os.path.basename(urllib.parse.urlsplit(img_url).path)
 		client = GfycatClient()
@@ -92,7 +117,7 @@ def get_media(img_url, post_id):
 			return ''
 	else:
 		print('[WARN] Post', post_id, 'doesn\'t point to an image/GIF:', img_url)
-		return ''
+		return
 
 def tweet_creator(subreddit_info):
 	post_dict = {}
@@ -259,6 +284,8 @@ if __name__ == '__main__':
 	ALT_CONSUMER_SECRET = config['AltTwitterKeys']['ConsumerSecret']
 	REDDIT_AGENT = config['Reddit']['Agent']
 	REDDIT_CLIENT_SECRET = config['Reddit']['ClientSecret']
+	IMGUR_CLIENT = config['Imgur']['ClientID']
+	IMGUR_CLIENT_SECRET = config['Imgur']['ClientSecret']
 	# Set the command line window title on Windows
 	if os.name == 'nt':
 		try:
