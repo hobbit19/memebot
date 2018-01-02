@@ -40,7 +40,6 @@ def save_file(img_url, file_path):
 		return
 
 def get_media(img_url, post_id):
-	img_url = 'https://i.imgur.com/ofWKFDn.mp4'
 	if any(s in img_url for s in ('i.redd.it', 'i.reddituploads.com')):
 		file_name = os.path.basename(urllib.parse.urlsplit(img_url).path)
 		file_extension = os.path.splitext(img_url)[-1].lower()
@@ -145,7 +144,7 @@ def get_media(img_url, post_id):
 def tweet_creator(subreddit_info):
 	post_dict = {}
 	print ('[ OK ] Getting posts from Reddit')
-	for submission in subreddit_info.hot(limit=20):
+	for submission in subreddit_info.hot(limit=POST_LIMIT):
 		# If the OP has deleted his account, save it as "a deleted user"
 		if submission.author is None:
 			submission.author = "a deleted user"
@@ -294,6 +293,7 @@ if __name__ == '__main__':
 	CACHE_CSV = config['BotSettings']['CacheFile']
 	IMAGE_DIR = config['BotSettings']['MediaFolder']
 	DELAY_BETWEEN_TWEETS = int(config['BotSettings']['DelayBetweenTweets'])
+	POST_LIMIT = int(config['BotSettings']['PostLimit'])
 	SUBREDDIT_TO_MONITOR = config['BotSettings']['SubredditToMonitor']
 	REPOST_PROTECTION = bool(distutils.util.strtobool(config['RepostSettings']['RepostProtection']))
 	REPOST_LIMIT = int(config['RepostSettings']['RepostLimit'])
