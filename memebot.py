@@ -152,7 +152,12 @@ def tweet_creator(subreddit_info):
 			submission.author.name = "a deleted user"
 		else:
 			submission.author.name = "/u/" + submission.author.name
-		post_dict[strip_title(submission.title)] = [submission.id,submission.url,submission.shortlink,submission.author.name]
+		if (submission.over_18 and NSFW_POSTS_ALLOWED is False):
+			# Skip over NSFW posts if they are disabled in the config file
+			print('[ OK ] Skipping', submission.id, 'because it is marked as NSFW')
+			continue
+		else:
+			post_dict[strip_title(submission.title)] = [submission.id,submission.url,submission.shortlink,submission.author.name]
 	return post_dict
 
 def setup_connection_reddit(subreddit):
@@ -309,6 +314,7 @@ if __name__ == '__main__':
 	DELAY_BETWEEN_TWEETS = int(config['BotSettings']['DelayBetweenTweets'])
 	POST_LIMIT = int(config['BotSettings']['PostLimit'])
 	SUBREDDIT_TO_MONITOR = config['BotSettings']['SubredditToMonitor']
+	NSFW_POSTS_ALLOWED = bool(distutils.util.strtobool(config['BotSettings']['NSFWPostsAllowed']))
 	REPOST_PROTECTION = bool(distutils.util.strtobool(config['RepostSettings']['RepostProtection']))
 	REPOST_LIMIT = int(config['RepostSettings']['RepostLimit'])
 	ACCESS_TOKEN = config['PrimaryTwitterKeys']['AccessToken']
