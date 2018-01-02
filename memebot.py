@@ -5,14 +5,18 @@ import tweepy
 import time
 import os
 import csv
+import re
 import configparser
 import urllib.parse
 import sys
 from glob import glob
 from gfycat.client import GfycatClient
+from imgurpython import ImgurClient
 import distutils.core
 import itertools
 import photohash
+from PIL import Image
+import urllib.request
 
 # Location of the configuration file
 CONFIG_FILE = 'config.ini'
@@ -33,64 +37,133 @@ def save_file(img_url, file_path):
 		# Return the path of the image, which is always the same since we just overwrite images
 		return file_path
 	else:
-		print('[EROR] File failed to download. Status code: ' + resp.status_code)
-		return ''
+		print('[EROR] File failed to download. Status code: ' + str(resp.status_code))
+		return
 
 def get_media(img_url, post_id):
-	if any(s in img_url for s in ('i.imgur.com', 'i.redd.it', 'i.reddituploads.com')):
-		# This adds support for all imgur links (including galleries), but I need to make a new regex
-		#if ('i.imgur.com' not in img_url) and ('imgur.com' in img_url):
-			#print('[bot] Attempting to retrieve image URL for', img_url, 'from imgur...')
-			#regex = r"(https?:\/\/imgur\.com\/a\/(.*?)(?:\/.*|$))"
-			#m = re.search(regex, img_url, flags=0)
-			#print(m.group(0))
-			#img_url = imgur.get_image(img_url)
+	if any(s in img_url for s in ('i.redd.it', 'i.reddituploads.com')):
 		file_name = os.path.basename(urllib.parse.urlsplit(img_url).path)
-		file_extension = os.path.splitext(img_url)[-1].lower();
+		file_extension = os.path.splitext(img_url)[-1].lower()
 		# Fix for issue with i.reddituploads.com links not having a file extension in the URL
 		if not file_extension:
 			file_extension += '.jpg'
 			file_name += '.jpg'
 			img_url += '.jpg'
+		# Grab the GIF versions of .GIFV links
+		# When Tweepy adds support for video uploads, we can use grab the MP4 versions
+		if (file_extension == '.gifv'):
+			file_extension = file_extension.replace('.gifv', '.gif')
+			file_name = file_name.replace('.gifv', '.gif')
+			img_url = img_url.replace('.gifv', '.gif')
+		# Download the file
 		file_path = IMAGE_DIR + '/' + file_name
 		print('[ OK ] Downloading file at URL ' + img_url + ' to ' + file_path + ', file type identified as ' + file_extension)
-		if ('gifv' not in img_url): # Can't process GIFV links until Imgur API integration is working
-			img = save_file(img_url, file_path)
-			return img
+		img = save_file(img_url, file_path)
+		return img
+	elif ('imgur.com' in img_url): # Imgur
+		try:
+			client = ImgurClient(IMGUR_CLIENT, IMGUR_CLIENT_SECRET)
+		except BaseException as e:
+			print ('[EROR] Error while authenticating with Imgur:', str(e))	
+			return
+		# Working demo of regex: https://regex101.com/r/G29uGl/2
+		regex = r"(?:.*)imgur\.com(?:\/gallery\/|\/a\/|\/)(.*?)(?:\/.*|\.|$)"
+		m = re.search(regex, img_url, flags=0)
+		if m:
+			# Get the Imgur image/gallery ID
+			id = m.group(1)
+			if any(s in img_url for s in ('/a/', '/gallery/')): # Gallery links
+				images = client.get_album_images(id)
+				# Only the first image in a gallery is used
+				imgur_url = images[0].link
+			else: # Single image
+				imgur_url = client.get_image(id).link
+			# If the URL is a GIFV link, change it to a GIF
+			file_extension = os.path.splitext(imgur_url)[-1].lower()
+			if (file_extension == '.gifv'):
+				file_extension = file_extension.replace('.gifv', '.gif')
+				img_url = imgur_url.replace('.gifv', '.gif')
+			# Download the image
+			file_path = IMAGE_DIR + '/' + id + file_extension
+			print('[ OK ] Downloading Imgur image at URL ' + imgur_url + ' to ' + file_path)
+			imgur_file = save_file(imgur_url, file_path)
+			# Imgur will sometimes return a single-frame thumbnail instead of a GIF, so we need to check for this
+			if (file_extension == '.gif'):
+				# Open the file using the Pillow library
+				img = Image.open(imgur_file)
+				# Get the MIME type
+				mime = Image.MIME[img.format]
+				if (mime == 'image/gif'):
+					# Image is indeed a GIF, so it can be posted
+					img.close()
+					return imgur_file
+				else:
+					# Image is not actually a GIF, so don't post it
+					print('[EROR] Imgur has not processed a GIF version of this link, so it can not be posted')
+					img.close()
+					# Delete the image
+					try:
+						os.remove(imgur_file)
+					except BaseException as e:
+						print ('[EROR] Error while deleting media file:', str(e))
+					return
+			else:
+				return imgur_file
 		else:
-			print('[WARN] GIFV files are not supported yet')
-			return ''
+			print('[EROR] Could not identify Imgur image/gallery ID in this URL:', img_url)
+			return
 	elif ('gfycat.com' in img_url): # Gfycat
-		# Twitter supports uploading videos, but Tweepy hasn't updated to support it yet.
 		gfycat_name = os.path.basename(urllib.parse.urlsplit(img_url).path)
 		client = GfycatClient()
 		gfycat_info = client.query_gfy(gfycat_name)
-		gfycat_url = gfycat_info['gfyItem']['mp4Url']
-		file_path = IMAGE_DIR + '/' + gfycat_name + '.mp4'
+		# Download the 2MB version because Tweepy has a 3MB upload limit for GIFs
+		gfycat_url = gfycat_info['gfyItem']['max2mbGif']
+		file_path = IMAGE_DIR + '/' + gfycat_name + '.gif'
 		print('[ OK ] Downloading Gfycat at URL ' + gfycat_url + ' to ' + file_path)
 		gfycat_file = save_file(gfycat_url, file_path)
 		return gfycat_file
+	elif ('giphy.com' in img_url): # Giphy
+		# Working demo of regex: https://regex101.com/r/o8m1kA/2
+		regex = r"https?://((?:.*)giphy\.com/media/|giphy.com/gifs/|i.giphy.com/)(.*-)?(\w+)(/|\n)"
+		m = re.search(regex, img_url, flags=0)
+		if m:
+			# Get the Giphy ID
+			id = m.group(3)
+			# Download the 2MB version because Tweepy has a 3MB upload limit for GIFs
+			giphy_url = 'https://media.giphy.com/media/' + id + '/giphy-downsized.gif'
+			file_path = IMAGE_DIR + '/' + id + '-downsized.gif'
+			print('[ OK ] Downloading Giphy at URL ' + giphy_url + ' to ' + file_path)
+			giphy_file = save_file(giphy_url, file_path)
+			return giphy_file
+		else:
+			print('[EROR] Could not identify Giphy ID in this URL:', img_url)
+			return
 	else:
-		print('[WARN] Post', post_id, 'doesn\'t point to an image/video:', img_url)
-		return ''
+		print('[WARN] Post', post_id, 'doesn\'t point to an image/GIF:', img_url)
+		return
 
 def tweet_creator(subreddit_info):
 	post_dict = {}
 	print ('[ OK ] Getting posts from Reddit')
-	for submission in subreddit_info.hot(limit=20):
+	for submission in subreddit_info.hot(limit=POST_LIMIT):
 		# If the OP has deleted his account, save it as "a deleted user"
 		if submission.author is None:
 			submission.author = "a deleted user"
 			submission.author.name = "a deleted user"
 		else:
 			submission.author.name = "/u/" + submission.author.name
-		post_dict[strip_title(submission.title)] = [submission.id,submission.url,submission.shortlink,submission.author.name]
+		if (submission.over_18 and NSFW_POSTS_ALLOWED is False):
+			# Skip over NSFW posts if they are disabled in the config file
+			print('[ OK ] Skipping', submission.id, 'because it is marked as NSFW')
+			continue
+		else:
+			post_dict[strip_title(submission.title)] = [submission.id,submission.url,submission.shortlink,submission.author.name]
 	return post_dict
 
 def setup_connection_reddit(subreddit):
 	print ('[ OK ] Setting up connection with Reddit...')
 	r = praw.Reddit(
-		user_agent='bot irl',
+		user_agent='memebot',
 		client_id=REDDIT_AGENT,
 		client_secret=REDDIT_CLIENT_SECRET)
 	return r.subreddit(subreddit)
@@ -170,7 +243,7 @@ def tweeter(post_dict):
 			post_op = post_dict[post][3]
 			# Make sure the post contains media (if it doesn't, then file_path would be blank)
 			if (file_path):
-				# Scan the image against previously-posted images, but only if repost protection is enabled in config.ini
+				# Scan the image against previously-posted images
 				try:
 					hash = photohash.average_hash(file_path)
 					print ('[ OK ] Image hash check:', hash_check(hash))
@@ -178,9 +251,8 @@ def tweeter(post_dict):
 					# Set hash to an empty string if the check failed
 					hash = ""
 					print ('[WARN] Could not check image hash, skipping.')
-				if (REPOST_PROTECTION is True and hash_check(hash) is True):
-					print ('[WARN] Skipping', post_id, 'because it seems to be a repost')
-				else:
+				# Only make a tweet if the post has not already been posted (if repost protection is enabled)
+				if ((REPOST_PROTECTION is True) and (hash_check(hash) is False)):
 					print ('[ OK ] Posting this on main twitter account:', post, file_path)
 					try:
 						# Post the tweet
@@ -200,18 +272,35 @@ def tweeter(post_dict):
 					except BaseException as e:
 						print ('[EROR] Error while posting tweet:', str(e))
 						# Log the post anyways
-						log_post(post_id, hash, "Error while posting tweet:" + str(e))
-			else:
-				print ('[WARN] Ignoring', post_id, 'because there was not a media file downloaded')
-			# Cleanup image file
-			if (file_path) is not None:
-				if (os.path.isfile(file_path)):
+						log_post(post_id, hash, 'Error while posting tweet: ' + str(e))
+				else:
+					print ('[ OK ] Skipping', post_id, 'because it is a repost or Memebot previously failed to post it')
+					log_post(post_id, hash, 'Post was already tweeted or was identified as a repost')
+				# Cleanup media file
+				try:
 					os.remove(file_path)
 					print ('[ OK ] Deleted media file at ' + file_path)
+				except BaseException as e:
+					print ('[EROR] Error while deleting media file:', str(e))
+			else:
+				print ('[ OK ] Ignoring', post_id, 'because there was not a media file downloaded')
 		else:
-				print ('[WARN] Ignoring', post_id, 'because it was already posted')
+			print ('[ OK ] Ignoring', post_id, 'because it was already posted')
 
 if __name__ == '__main__':
+	# Check for updates
+	try:
+		with urllib.request.urlopen("https://raw.githubusercontent.com/corbindavenport/memebot/update-check/current-version.txt") as url:
+			s = url.read()
+			new_version = s.decode("utf-8").rstrip()
+			current_version = 3.0 # Current version of script
+			if (current_version < float(new_version)):
+				print('IMPORTANT: A new version of Memebot (' + str(new_version) + ') is available! (you have ' + str(current_version) + ')')
+				print ('IMPORTANT: Get the latest update from here: https://github.com/corbindavenport/memebot/releases')
+			else:
+				print('[ OK ] You have the latest version of Memebot (' + str(current_version) + ')')
+	except BaseException as e:
+		print ('[EROR] Error while checking for updates:', str(e))
 	# Make sure config file exists
 	try:
 		config = configparser.ConfigParser()
@@ -223,7 +312,9 @@ if __name__ == '__main__':
 	CACHE_CSV = config['BotSettings']['CacheFile']
 	IMAGE_DIR = config['BotSettings']['MediaFolder']
 	DELAY_BETWEEN_TWEETS = int(config['BotSettings']['DelayBetweenTweets'])
+	POST_LIMIT = int(config['BotSettings']['PostLimit'])
 	SUBREDDIT_TO_MONITOR = config['BotSettings']['SubredditToMonitor']
+	NSFW_POSTS_ALLOWED = bool(distutils.util.strtobool(config['BotSettings']['NSFWPostsAllowed']))
 	REPOST_PROTECTION = bool(distutils.util.strtobool(config['RepostSettings']['RepostProtection']))
 	REPOST_LIMIT = int(config['RepostSettings']['RepostLimit'])
 	ACCESS_TOKEN = config['PrimaryTwitterKeys']['AccessToken']
@@ -236,6 +327,19 @@ if __name__ == '__main__':
 	ALT_CONSUMER_SECRET = config['AltTwitterKeys']['ConsumerSecret']
 	REDDIT_AGENT = config['Reddit']['Agent']
 	REDDIT_CLIENT_SECRET = config['Reddit']['ClientSecret']
+	IMGUR_CLIENT = config['Imgur']['ClientID']
+	IMGUR_CLIENT_SECRET = config['Imgur']['ClientSecret']
+	# Set the command line window title on Windows
+	if os.name == 'nt':
+		try:
+			auth = tweepy.OAuthHandler(CONSUMER_KEY, CONSUMER_SECRET)
+			auth.set_access_token(ACCESS_TOKEN, ACCESS_TOKEN_secret)
+			api = tweepy.API(auth)
+			username = api.me().screen_name
+			title = '@' + username + ' - Memebot'
+		except:
+			title = 'Memebot'
+		os.system('title ' + title)
 	# Run the main script
 	while True:
 		main()
