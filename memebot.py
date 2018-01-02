@@ -16,6 +16,7 @@ import distutils.core
 import itertools
 import photohash
 from PIL import Image
+import urllib.request
 
 # Location of the configuration file
 CONFIG_FILE = 'config.ini'
@@ -282,6 +283,19 @@ def tweeter(post_dict):
 			print ('[WARN] Ignoring', post_id, 'because it was already posted')
 
 if __name__ == '__main__':
+	# Check for updates
+	try:
+		with urllib.request.urlopen("https://raw.githubusercontent.com/corbindavenport/memebot/update-check/current-version.txt") as url:
+			s = url.read()
+			new_version = s.decode("utf-8").rstrip()
+			current_version = 3.0 # Current version of script
+			if (current_version < float(new_version)):
+				print('IMPORTANT: A new version of Memebot (' + str(new_version) + ') is available! (you have ' + str(current_version) + ')')
+				print ('IMPORTANT: Get the latest update from here: https://github.com/corbindavenport/memebot/releases')
+			else:
+				print('[ OK ] You have the latest version of Memebot (' + str(current_version) + ')')
+	except BaseException as e:
+		print ('[EROR] Error while checking for updates:', str(e))
 	# Make sure config file exists
 	try:
 		config = configparser.ConfigParser()
