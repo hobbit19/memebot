@@ -274,7 +274,7 @@ def tweeter(post_dict):
 						# Log the post anyways
 						log_post(post_id, hash, 'Error while posting tweet: ' + str(e))
 				else:
-					print ('[WARN] Skipping', post_id, 'because it is a repost or Memebot previously failed to post it')
+					print ('[ OK ] Skipping', post_id, 'because it is a repost or Memebot previously failed to post it')
 					log_post(post_id, hash, 'Post was already tweeted or was identified as a repost')
 				# Cleanup media file
 				try:
@@ -283,9 +283,9 @@ def tweeter(post_dict):
 				except BaseException as e:
 					print ('[EROR] Error while deleting media file:', str(e))
 			else:
-				print ('[WARN] Ignoring', post_id, 'because there was not a media file downloaded')
+				print ('[ OK ] Ignoring', post_id, 'because there was not a media file downloaded')
 		else:
-			print ('[WARN] Ignoring', post_id, 'because it was already posted')
+			print ('[ OK ] Ignoring', post_id, 'because it was already posted')
 
 if __name__ == '__main__':
 	# Check for updates
