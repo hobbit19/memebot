@@ -15,6 +15,7 @@ from imgurpython import ImgurClient
 import distutils.core
 import itertools
 import photohash
+from PIL import Image
 
 # Location of the configuration file
 CONFIG_FILE = 'config.ini'
@@ -39,6 +40,7 @@ def save_file(img_url, file_path):
 		return ''
 
 def get_media(img_url, post_id):
+	img_url = 'https://i.imgur.com/ofWKFDn.mp4'
 	if any(s in img_url for s in ('i.redd.it', 'i.reddituploads.com')):
 		file_name = os.path.basename(urllib.parse.urlsplit(img_url).path)
 		file_extension = os.path.splitext(img_url)[-1].lower()
@@ -135,7 +137,7 @@ def tweet_creator(subreddit_info):
 def setup_connection_reddit(subreddit):
 	print ('[ OK ] Setting up connection with Reddit...')
 	r = praw.Reddit(
-		user_agent='bot irl',
+		user_agent='memebot',
 		client_id=REDDIT_AGENT,
 		client_secret=REDDIT_CLIENT_SECRET)
 	return r.subreddit(subreddit)
@@ -164,6 +166,26 @@ def hash_check(hash):
 	else:
 		value = True
 	return value
+
+# This function prevents GIFs from being posted when only the first frame is downloaded
+# Relevant bug report: https://github.com/corbindavenport/memebot/issues/15
+def gif_check(image):
+	try:
+		im = Image.open(image)
+	except BaseException as e:
+		print ('[EROR] Error while counting number of GIF frames:', str(e))	
+		return False
+	count = 0
+	try:
+		while 1:
+			im.seek(im.tell()+1)
+			count += 1
+	except EOFError:
+		# Only return True if the GIF has more than one frame
+		if (count > 1):
+			return True
+		else:
+			return False
 
 def log_post(id, hash, tweetID):
 	with open(CACHE_CSV, 'a', newline='') as cache:
@@ -215,6 +237,7 @@ def tweeter(post_dict):
 			post_op = post_dict[post][3]
 			# Make sure the post contains media (if it doesn't, then file_path would be blank)
 			if (file_path):
+				file_extension = os.path.splitext(file_path)[-1].lower()
 				# Scan the image against previously-posted images
 				try:
 					hash = photohash.average_hash(file_path)
@@ -225,26 +248,31 @@ def tweeter(post_dict):
 					print ('[WARN] Could not check image hash, skipping.')
 				# Only make a tweet if the post has not already been posted (if repost protection is enabled)
 				if ((REPOST_PROTECTION is True) and (hash_check(hash) is False)):
-					print ('[ OK ] Posting this on main twitter account:', post, file_path)
-					try:
-						# Post the tweet
-						api.update_with_media(filename=file_path, status=post)
-						# Log the tweet
-						username = api.me().screen_name
-						latestTweets = api.user_timeline(screen_name = username, count = 1, include_rts = False)
-						newestTweet = latestTweets[0].id_str
-						log_post(post_id, hash, 'https://twitter.com/' + username + '/status/' + newestTweet + '/')
-						# Post alt tweet
-						if ALT_ACCESS_TOKEN:
-							alt_tweeter(post_link, post_op, username, newestTweet)
-						else:
-							print('[WARN] No authentication info for alternate account in config.ini, skipping alt tweet.')
-						print('[ OK ] Sleeping for', DELAY_BETWEEN_TWEETS, 'seconds')
-						time.sleep(DELAY_BETWEEN_TWEETS)
-					except BaseException as e:
-						print ('[EROR] Error while posting tweet:', str(e))
-						# Log the post anyways
-						log_post(post_id, hash, 'Error while posting tweet: ' + str(e))
+					# If the file is a GIF, make sure more than the first frame was downloaded
+					if ((file_extension == '.gif') and (gif_check(file_path))):
+						print ('[ OK ] Posting this on main twitter account:', post, file_path)
+						try:
+							# Post the tweet
+							api.update_with_media(filename=file_path, status=post)
+							# Log the tweet
+							username = api.me().screen_name
+							latestTweets = api.user_timeline(screen_name = username, count = 1, include_rts = False)
+							newestTweet = latestTweets[0].id_str
+							log_post(post_id, hash, 'https://twitter.com/' + username + '/status/' + newestTweet + '/')
+							# Post alt tweet
+							if ALT_ACCESS_TOKEN:
+								alt_tweeter(post_link, post_op, username, newestTweet)
+							else:
+								print('[WARN] No authentication info for alternate account in config.ini, skipping alt tweet.')
+							print('[ OK ] Sleeping for', DELAY_BETWEEN_TWEETS, 'seconds')
+							time.sleep(DELAY_BETWEEN_TWEETS)
+						except BaseException as e:
+							print ('[EROR] Error while posting tweet:', str(e))
+							# Log the post anyways
+							log_post(post_id, hash, 'Error while posting tweet: ' + str(e))
+					else:
+						print ('[WARN] Skipping', post_id, 'because only the first frame was downloaded')
+						log_post(post_id, hash, 'Error downloading full GIF file')
 				else:
 					print ('[WARN] Skipping', post_id, 'because it is a repost or Memebot previously failed to post it')
 					log_post(post_id, hash, 'Post was already tweeted or was identified as a repost')
