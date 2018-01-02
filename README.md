@@ -16,9 +16,10 @@ First, you will need to install Python 3 on your system. After that, you will al
 
 All settings for the bot can be found in the `config.ini` file. Open the file in any text editor and add the following info:
 
-1. Under the [BotSettings] section, add the name of the subreddit to `SubredditToMonitor` (do not include the /r/)
-2. By default, the bot will wait at least 600 seconds between tweets to prevent spamming. You can change this by editing the `DelayBetweenTweets` setting in the [BotSettings] section
-3. By default, the bot's Repost Protection feature is enabled. Read the below 'Repost options' section to learn more.
+1. Under the [BotSettings] section, add the name of the subreddit to `SubredditToMonitor` (do not include the /r/). You can also set multiple subreddits using the `+` symbol (example: `AnimalsBeingBros+babyelephantgifs+aww`).
+2. By default, the bot will wait at least 600 seconds between tweets to prevent spamming. You can change this by editing the `DelayBetweenTweets` setting in the `[BotSettings]` section.
+3. By default, the bot will only look at the top 10 'hot' posts in a subreddit. You can change this by editing the `PostLimit` setting in the `[BotSettings]` section.
+4. By default, the bot's Repost Protection feature is enabled. Read the below 'Repost options' section to learn more.
 
 Next, you'll need to give Memebot access to a Twitter account, and add the required information to the config file.
 
@@ -28,7 +29,7 @@ Next, you'll need to give Memebot access to a Twitter account, and add the requi
 4. Make sure that 'Access level' says 'Read and write'
 5. Click the 'Keys and Access Tokens' tab
 6. Click the 'Create my access token' button
-7. Fill out the [PrimaryTwitterKeys] section in the config file with the info
+7. Fill out the `[PrimaryTwitterKeys]` section in the config file with the info
 
 You can also optionally use another Twitter account to reply to every tweet with the original source on Reddit ([example](https://twitter.com/IRL_Context/status/846069261474938880)). The bot will still work if you skip this step, but it will not post the original source.
 
@@ -38,7 +39,7 @@ You can also optionally use another Twitter account to reply to every tweet with
 4. Make sure that 'Access level' says 'Read and write'
 5. Click the 'Keys and Access Tokens' tab
 6. Click the 'Create my access token' button
-7. Fill out the [AltTwitterKeys] section in the config file with the info
+7. Fill out the `[AltTwitterKeys]` section in the config file with the info
 
 In addition, you will have to create an application on Reddit:
 
@@ -51,7 +52,7 @@ Finally, you need to create an application on Imgur, so the bot can obtain direc
 
 1. Sign into [Imgur](https://imgur.com/) with your account, or make one if you haven't already.
 2. Register an application [here](https://api.imgur.com/oauth2/addclient). Choose 'OAuth 2 authorization without a callback URL' as the app type.
-3. Add the Client ID and Client secret to the [Imgur] section of the config file
+3. Add the Client ID and Client secret to the `[Imgur]` section of the config file
 
 ## Repost options
 
