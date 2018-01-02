@@ -8,9 +8,9 @@ I hold no liability for what you do with this script or what happens to you by u
 
 ## Dependencies
 
-First, you will need to install Python 3 on your system. After that, you will also need to install the [tweepy](https://github.com/tweepy/tweepy), [PRAW](https://praw.readthedocs.io/en/latest/), [py-gfycat](https://github.com/ankeshanand/py-gfycat), [imgurpython](https://github.com/Imgur/imgurpython), and [PhotoHash](https://github.com/bunchesofdonald/photohash) libraries. You can do so by running this command:
+First, you will need to install Python 3 on your system. After that, you will also need to install the [tweepy](https://github.com/tweepy/tweepy), [PRAW](https://praw.readthedocs.io/en/latest/), [py-gfycat](https://github.com/ankeshanand/py-gfycat), [imgurpython](https://github.com/Imgur/imgurpython), [PhotoHash](https://github.com/bunchesofdonald/photohash), and [Pillow](https://github.com/python-pillow/Pillow) libraries. You can do so by running this command:
 
-    pip3 install tweepy praw gfycat imgurpython PhotoHash
+    pip3 install tweepy praw gfycat imgurpython PhotoHash Pillow
 
 ## Setting up the bot
 
