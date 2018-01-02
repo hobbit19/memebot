@@ -104,7 +104,6 @@ def get_media(img_url, post_id):
 					# Delete the image
 					try:
 						os.remove(imgur_file)
-						print ('[ OK ] Deleted media file at ' + imgur_file)
 					except BaseException as e:
 						print ('[EROR] Error while deleting media file:', str(e))
 					return
