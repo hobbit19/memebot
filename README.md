@@ -1,4 +1,4 @@
-# Memebot
+# Memebot is now [Tootbot](https://github.com/corbindavenport/tootbot), please use that instead to make your social bots! See [this page](https://github.com/corbindavenport/tootbot/wiki/Upgrading-from-Memebot) for help upgrading from Memebot to Tootbot.
 
 This is a Python bot that looks up images from a specified subreddit and automatically posts them on Twitter. It is based on [reddit-twitter-bot](https://github.com/rhiever/reddit-twitter-bot). Memebot was created for the [@ItMeIRL](https://twitter.com/ItMeIRL) Twitter account, and is now used on a variety of other accounts.
 
